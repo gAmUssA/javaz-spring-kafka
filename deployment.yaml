@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: javaz-spring-kafka
+spec:
+  serviceName: javaz-spring-kafka
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: javaz-spring-kafka
+  template:
+    metadata:
+      labels:
+        app: javaz-spring-kafka
+    spec:
+      containers:
+        - name: javaz-spring
+          image: docker.io/gamussa/javaz-spring-kafka
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_CONFIG_LOCATION
+              value: /mnt/app/application.yaml
+          volumeMounts:
+            - name: spring-boot-javaz-spring-kafka-application-yaml
+              mountPath: /mnt/app
+          resources:
+            requests:
+              memory: 512Mi # 768Mi
+              cpu: 500m # 1000m
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 2
+      volumes:
+        - name: spring-boot-javaz-spring-kafka-application-yaml
+          secret:
+            secretName: spring-boot-javaz-spring-kafka-application-yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer
+spec:
+  type: LoadBalancer
+  selector:
+    app: javaz-spring-kafka
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  
